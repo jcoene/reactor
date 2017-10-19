@@ -74,7 +74,7 @@ func (p *Pool) Get() (*Worker, error) {
 	for len(p.workers) > 0 {
 		w := p.workers[0]
 		p.workers = p.workers[1:]
-		if w.version == p.version {
+		if w.version == p.version && !w.closed {
 			return w, nil
 		}
 	}
