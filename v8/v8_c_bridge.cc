@@ -1,4 +1,4 @@
-#include "v8_c.h"
+#include "v8_c_bridge.h"
 
 #include "libplatform/libplatform.h"
 #include "v8.h"
@@ -8,13 +8,6 @@
 #include <string>
 #include <sstream>
 #include <stdio.h>
-
-typedef struct {
-  v8::Persistent<v8::Context> ptr;
-  v8::Isolate* isolate;
-} Context;
-
-typedef v8::Persistent<v8::Value> V8_Persistent_Value;
 
 #define ISOLATE_SCOPE(isolate_ptr) \
   v8::Isolate* isolate = (isolate_ptr); \
@@ -30,6 +23,13 @@ typedef v8::Persistent<v8::Value> V8_Persistent_Value;
   v8::HandleScope handle_scope(isolate); \
   v8::Local<v8::Context> local_context(context->ptr.Get(isolate)); \
   v8::Context::Scope context_scope(local_context);
+
+typedef struct {
+  v8::Persistent<v8::Context> ptr;
+  v8::Isolate* isolate;
+} Context;
+
+typedef v8::Persistent<v8::Value> V8_Persistent_Value;
 
 String DupString(const v8::String::Utf8Value& src) {
   char* data = static_cast<char*>(malloc(src.length()));
@@ -92,10 +92,15 @@ std::string report_exception(v8::Isolate* isolate, v8::TryCatch& try_catch) {
 
 // Called from Go
 
+extern "C" {
+
+Version version = {V8_MAJOR_VERSION, V8_MINOR_VERSION, V8_BUILD_NUMBER, V8_PATCH_LEVEL};
+
 void V8_Init() {
   v8::Platform *platform = v8::platform::CreateDefaultPlatform();
   v8::V8::InitializePlatform(platform);
   v8::V8::Initialize();
+  return;
 }
 
 ContextPtr V8_Context_New() {
@@ -107,7 +112,7 @@ ContextPtr V8_Context_New() {
   v8::Isolate::Scope isolate_scope(isolate);
   v8::HandleScope handle_scope(isolate);
 
-  v8::V8::SetCaptureStackTraceForUncaughtExceptions(true);
+  // v8::V8::SetCaptureStackTraceForUncaughtExceptions(true);
 
   v8::Local<v8::ObjectTemplate> globals = v8::ObjectTemplate::New(isolate);
 
@@ -161,7 +166,7 @@ Result V8_Context_Eval(ContextPtr context_ptr, const char* code, const char* fil
     res.v_ptr = static_cast<ValuePtr>(val);
   }
 
-	return res;
+  return res;
 }
 
 String V8_Value_String(ContextPtr context_ptr, ValuePtr value_ptr) {
@@ -176,3 +181,5 @@ void V8_Value_Release(ContextPtr context_ptr, ValuePtr value_ptr) {
   value->Reset();
   delete value;
 }
+
+} // extern "C"

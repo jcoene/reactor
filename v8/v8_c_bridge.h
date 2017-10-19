@@ -1,5 +1,5 @@
-#ifndef V8_C_H
-#define V8_C_H
+#ifndef V8_C_BRIDGE_H
+#define V8_C_BRIDGE_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -24,6 +24,9 @@ typedef struct {
   Error e;
 } Result;
 
+typedef struct { int Major, Minor, Build, Patch; } Version;
+extern Version version;
+
 // Go accessible functions
 extern void       V8_Init();
 extern ContextPtr V8_Context_New();
@@ -33,7 +36,7 @@ extern String     V8_Value_String(ContextPtr context_ptr, ValuePtr value_ptr);
 extern void       V8_Value_Release(ContextPtr context_ptr, ValuePtr value_ptr);
 
 #ifdef __cplusplus
-} // extern "C"
+}
 #endif
 
-#endif // V8_C_H
+#endif // !defined(V8_C_BRIDGE_H)

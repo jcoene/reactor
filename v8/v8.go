@@ -2,7 +2,7 @@ package v8
 
 // #include <stdlib.h>
 // #include <string.h>
-// #include "v8_c.h"
+// #include "v8_c_bridge.h"
 // #cgo CXXFLAGS: -I${SRCDIR} -I${SRCDIR}/include -std=c++11
 // #cgo darwin LDFLAGS: -L${SRCDIR}/lib/darwin_x86_64 -lv8_base -lv8_libbase -lv8_snapshot -lv8_libsampler -lv8_libplatform -ldl -pthread
 // #cgo linux LDFLAGS: -L${SRCDIR}/lib/linux_x86_64 -lv8_base -lv8_libbase -lv8_snapshot -lv8_libsampler -lv8_libplatform -ldl -pthread

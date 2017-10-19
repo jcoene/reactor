@@ -106,25 +106,26 @@ func TestEvalInvalidScript(t *testing.T) {
 }
 
 func TestSegmentFault(t *testing.T) {
-	type person struct {
-		name string
-	}
+	t.Skip("beware that a panic unrelated to v8 may cause the app to segfault")
 
-	var nobody *person
+	ctx := NewContext()
+	ctx.Release()
 
-	spawn(3, func() {
+	func() {
 		defer func() {
 			if err := recover(); err != nil {
 				fmt.Println("recovered without segfaulting due to", err)
 			}
 		}()
 
-		ctx := NewContext()
-		ctx.Release()
+		type person struct {
+			name string
+		}
+
+		var nobody *person
 
 		fmt.Println(nobody.name) // causes a panic
-	})
-
+	}()
 }
 
 func TestConcurrentCall(t *testing.T) {
