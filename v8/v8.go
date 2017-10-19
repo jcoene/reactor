@@ -12,7 +12,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"runtime"
 	"strings"
 	"sync"
@@ -21,11 +20,17 @@ import (
 
 var once sync.Once
 
+var ErrReleasedContext = errors.New("released context")
+
+func initV8() {
+	C.V8_Init()
+}
+
 // Context is a v8::Context wrapped in it's own v8::Isolate. It must be
 // manually released to avoid leaking references.
 type Context struct {
 	ptr C.ContextPtr
-	// iso *Isolate
+	mu  sync.Mutex
 }
 
 // Value is a v8::Persistent<v8::Value> associated with a v8::Context. It
@@ -34,17 +39,6 @@ type Context struct {
 type Value struct {
 	ptr C.ValuePtr
 	ctx *Context
-}
-
-func initV8() {
-	ok := make(chan bool, 1)
-	never := make(chan bool, 1)
-	go func() {
-		C.V8_Init()
-		ok <- true
-		<-never
-	}()
-	<-ok
 }
 
 // NewContext creates a new Context. It should be released after use.
@@ -58,9 +52,7 @@ func NewContext() *Context {
 	}
 
 	runtime.SetFinalizer(ctx, func(ctx *Context) {
-		fmt.Println("FIN")
-
-		// ctx.Release()
+		ctx.Release()
 	})
 
 	return ctx
@@ -70,20 +62,18 @@ func NewContext() *Context {
 // v8::Isolate. Any Values with outstanding references will become unusable
 // and may cause a segmentation fault if tried to access.
 func (ctx *Context) Release() {
-	return
+	ctx.mu.Lock()
+	defer ctx.mu.Unlock()
 
-	DEBUG("Context.Release enter")
 	if ctx.ptr != nil {
 		C.V8_Context_Release(ctx.ptr)
 		ctx.ptr = nil
 	}
-	DEBUG("Context.Release exit")
 }
 
 // Call calls the given function with the provided arguments. The arguments
 // will be JSON encoded and passed to Eval.
 func (ctx *Context) Call(name string, vs ...interface{}) (*Value, error) {
-	DEBUG("Call enter")
 	args := make([]string, len(vs))
 	for i, v := range vs {
 		buf, err := json.Marshal(v)
@@ -94,7 +84,6 @@ func (ctx *Context) Call(name string, vs ...interface{}) (*Value, error) {
 	}
 	code := fmt.Sprintf("%s(%s)", name, strings.Join(args, ","))
 	val, err := ctx.Eval(code, "")
-	DEBUG("Call exit")
 	return val, err
 }
 
@@ -102,16 +91,19 @@ func (ctx *Context) Call(name string, vs ...interface{}) (*Value, error) {
 // returned Value or error will be present, never both. If returned, the
 // given Value must be manually released to avoid leaking references.
 func (ctx *Context) Eval(code, filename string) (*Value, error) {
-	DEBUG("Eval enter")
+	ctx.mu.Lock()
+	defer ctx.mu.Unlock()
+
+	if ctx.ptr == nil {
+		return nil, fmt.Errorf("invalid context")
+	}
+
 	c_code := C.CString(code)
 	c_filename := C.CString(filename)
 	result := C.V8_Context_Eval(ctx.ptr, c_code, c_filename)
 	C.free(unsafe.Pointer(c_filename))
 	C.free(unsafe.Pointer(c_code))
-
-	val, err := ctx.decodeResult(result)
-	DEBUG("Eval exit")
-	return val, err
+	return ctx.decodeResult(result)
 }
 
 // EvalRelease calls Eval, returning only the error (if present). If Eval
@@ -146,9 +138,16 @@ func (ctx *Context) decodeResult(res C.Result) (v *Value, err error) {
 // internal pointer are nil, "undefined" will be returned. It is safe to call
 // String on a nil *Value.
 func (val *Value) String() string {
-	if val == nil || val.ptr == nil {
+	if val == nil || val.ptr == nil || val.ctx == nil || val.ctx.ptr == nil {
 		return "undefined"
 	}
+
+	val.ctx.mu.Lock()
+	defer val.ctx.mu.Unlock()
+	if val.ctx.ptr == nil {
+		return "undefined"
+	}
+
 	c_s := C.V8_Value_String(val.ctx.ptr, val.ptr)
 	s := C.GoStringN(c_s.ptr, c_s.len)
 	C.free(unsafe.Pointer(c_s.ptr))
@@ -161,11 +160,12 @@ func (val *Value) String() string {
 // leaking references. Calling Release on a Value whose Context has been
 // Released may cause a segmentation fault.
 func (val *Value) Release() {
-	return
-
 	if val == nil || val.ctx == nil || val.ptr == nil {
 		return
 	}
+
+	val.ctx.mu.Lock()
+	defer val.ctx.mu.Unlock()
 
 	// do our best to prevent a segfault, but a race can theoretically happen.
 	if val.ctx.ptr == nil {
@@ -178,12 +178,4 @@ func (val *Value) Release() {
 	C.V8_Value_Release(val.ctx.ptr, val.ptr)
 	val.ctx = nil
 	val.ptr = nil
-}
-
-var is_debug = os.Getenv("DEBUG") != ""
-
-func DEBUG(args ...interface{}) {
-	if is_debug {
-		fmt.Println(append([]interface{}{"GO"}, args...)...)
-	}
 }

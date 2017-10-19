@@ -112,7 +112,7 @@ func TestSegmentFault(t *testing.T) {
 
 	var nobody *person
 
-	spawn(10, func() {
+	spawn(3, func() {
 		defer func() {
 			if err := recover(); err != nil {
 				fmt.Println("recovered without segfaulting due to", err)
@@ -122,10 +122,7 @@ func TestSegmentFault(t *testing.T) {
 		ctx := NewContext()
 		ctx.Release()
 
-		if nobody == nil {
-			return
-		}
-		// fmt.Println(nobody.name) // causes a panic
+		fmt.Println(nobody.name) // causes a panic
 	})
 
 }

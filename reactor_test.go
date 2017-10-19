@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 )
 
 var bundle = func() string {
@@ -37,8 +38,31 @@ func BenchmarkRender(b *testing.B) {
 	}
 }
 
+func TestRenderTimeout(t *testing.T) {
+	pool, err := NewPool(bundle)
+	if err != nil {
+		t.Fatalf("cannot create pool: %s", err)
+	}
+
+	req := &Request{
+		Name: "Widget",
+		Props: map[string]interface{}{
+			"serial": "1",
+		},
+		Timeout: 10 * time.Nanosecond,
+	}
+
+	resp, err := pool.Render(req)
+	assertNil(t, resp)
+	assertNotNil(t, err)
+	if err != nil {
+		assertContains(t, err.Error(), "timed out")
+	}
+	time.Sleep(1 * time.Second)
+}
+
 func TestRender(t *testing.T) {
-	threads := 20
+	threads := 10
 	requests := 1000
 
 	// create a new pool

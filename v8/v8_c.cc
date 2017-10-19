@@ -57,15 +57,7 @@ std::string str(v8::Local<v8::Value> value) {
   return *s;
 }
 
-void DEBUG(const char *msg) {
-  if(std::getenv("DEBUG")) {
-    printf("CC %s\n", msg);
-  }
-}
-
 std::string report_exception(v8::Isolate* isolate, v8::TryCatch& try_catch) {
-  DEBUG("report_exception enter");
-
   std::stringstream ss;
   ss << "Uncaught exception: ";
 
@@ -73,7 +65,6 @@ std::string report_exception(v8::Isolate* isolate, v8::TryCatch& try_catch) {
   ss << exceptionStr; // TODO(aroman) JSON-ify objects?
 
   if (!try_catch.Message().IsEmpty()) {
-    DEBUG("report_exception try_catch not empty");
     if (!try_catch.Message()->GetScriptResourceName()->IsUndefined()) {
       ss << std::endl
          << "at " << str(try_catch.Message()->GetScriptResourceName()) << ":"
@@ -90,18 +81,12 @@ std::string report_exception(v8::Isolate* isolate, v8::TryCatch& try_catch) {
         ss << "^";
       }
     }
-  } else {
-    DEBUG("report_exception try_catch empty");
   }
 
   if (!try_catch.StackTrace().IsEmpty()) {
-    DEBUG("report_exception stack_trace not empty");
     ss << std::endl << "Stack trace: " << str(try_catch.StackTrace());
-  } else {
-    DEBUG("report_exception stack_trace empty");
   }
 
-  DEBUG("report_exception exit");
   return ss.str();
 }
 
@@ -135,27 +120,22 @@ ContextPtr V8_Context_New() {
 // releaseIsolate retrieves the V8_Context and sets ISOLATE_SCOPE, then
 // resets the v8::Context and returns the v8::Isolate it used to contain.
 v8::Isolate* releaseIsolate(ContextPtr context_ptr) {
-  DEBUG("releaseIsolate enter");
   CONTEXT_SCOPE(context_ptr);
   context->ptr.Reset();
-  DEBUG("releaseIsolate exit");
   return isolate;
 }
 
 // V8_Context_Release releases the Context, first by resetting the internal
 // v8::Context then disposing of the v8::Isolate.
 void V8_Context_Release(ContextPtr context_ptr) {
-  DEBUG("V8_Context_Release enter");
   // Release the isolate from the context
   v8::Isolate* isolate = releaseIsolate(context_ptr);
   // Dispose of the isolate
   isolate->Dispose();
-  DEBUG("V8_Context_Release exit");
 }
 
 // V8_Context_Eval compiles and run the given code inside of the context.
 Result V8_Context_Eval(ContextPtr context_ptr, const char* code, const char* filename) {
-  DEBUG("V8_Context_Eval enter");
   VALUE_SCOPE(context_ptr);
 
   v8::TryCatch try_catch;
@@ -168,42 +148,31 @@ Result V8_Context_Eval(ContextPtr context_ptr, const char* code, const char* fil
       v8::String::NewFromUtf8(isolate, filename));
 
   if (script.IsEmpty()) {
-    DEBUG("V8_Context_Eval script_is_empty");
     res.e = DupString(report_exception(isolate, try_catch));
-    DEBUG("V8_Context_Eval exit 1");
     return res;
   }
 
   v8::Local<v8::Value> result = script->Run();
 
   if (result.IsEmpty()) {
-    DEBUG("V8_Context_Eval result_is_empty");
     res.e = DupString(report_exception(isolate, try_catch));
   } else {
-    DEBUG("V8_Context_Eval result_is_full");
     V8_Persistent_Value* val = new V8_Persistent_Value(isolate, result);
     res.v_ptr = static_cast<ValuePtr>(val);
   }
 
-  DEBUG("V8_Context_Eval exit");
 	return res;
 }
 
 String V8_Value_String(ContextPtr context_ptr, ValuePtr value_ptr) {
-  DEBUG("V8_Value_String enter");
   VALUE_SCOPE(context_ptr);
-
   v8::Local<v8::Value> value = static_cast<V8_Persistent_Value*>(value_ptr)->Get(isolate);
-  DEBUG("V8_Value_String exit");
   return DupString(value->ToString());
 }
 
 void V8_Value_Release(ContextPtr context_ptr, ValuePtr value_ptr) {
-  DEBUG("V8_Value_Release enter");
   VALUE_SCOPE(context_ptr);
-
   V8_Persistent_Value* value = static_cast<V8_Persistent_Value*>(value_ptr);
   value->Reset();
-  DEBUG("V8_Value_Release exit");
   delete value;
 }
