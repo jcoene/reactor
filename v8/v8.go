@@ -4,8 +4,8 @@ package v8
 // #include <string.h>
 // #include "v8_c_bridge.h"
 // #cgo CXXFLAGS: -I${SRCDIR} -I${SRCDIR}/include -std=c++11
-// #cgo darwin LDFLAGS: -L${SRCDIR}/lib/darwin_x86_64 -lv8_base -lv8_libbase -lv8_snapshot -lv8_libsampler -lv8_libplatform -ldl -pthread
-// #cgo linux LDFLAGS: -L${SRCDIR}/lib/linux_x86_64 -lv8_base -lv8_libbase -lv8_snapshot -lv8_libsampler -lv8_libplatform -ldl -pthread
+// #cgo darwin LDFLAGS: -L${SRCDIR}/lib/darwin_x86_64 -lv8_base -lv8_snapshot -lv8_libplatform -lv8_libbase -lv8_libsampler -ldl -pthread
+// #cgo linux LDFLAGS: -L${SRCDIR}/lib/linux_x86_64 -lv8_base -lv8_snapshot -lv8_libplatform -lv8_libbase -lv8_libsampler -ldl -pthread
 import "C"
 
 import (
@@ -21,10 +21,6 @@ import (
 var once sync.Once
 
 var ErrReleasedContext = errors.New("released context")
-
-func initV8() {
-	C.V8_Init()
-}
 
 // Context is a v8::Context wrapped in it's own v8::Isolate. It must be
 // manually released to avoid leaking references.
@@ -44,7 +40,7 @@ type Value struct {
 // NewContext creates a new Context. It should be released after use.
 func NewContext() *Context {
 	once.Do(func() {
-		initV8()
+		C.V8_Init()
 	})
 
 	ctx := &Context{

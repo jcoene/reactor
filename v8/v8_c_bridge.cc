@@ -112,7 +112,7 @@ ContextPtr V8_Context_New() {
   v8::Isolate::Scope isolate_scope(isolate);
   v8::HandleScope handle_scope(isolate);
 
-  // v8::V8::SetCaptureStackTraceForUncaughtExceptions(true);
+  v8::V8::SetCaptureStackTraceForUncaughtExceptions(true);
 
   v8::Local<v8::ObjectTemplate> globals = v8::ObjectTemplate::New(isolate);
 
