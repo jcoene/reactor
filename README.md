@@ -12,14 +12,15 @@ import "github.com/jcoene/reactor"
 
 // Read your "server-side" javascript bundle, probably compiled with Webpack.
 // The only requirement is that it exposes a global render function that receives
-// a request and callback, then invokes the callback with the response. It will
-// usually look something like this:
+// a request returns a response, both encoded as JSON. It will usually look
+// something like this:
 //
-// global.render = (req, cb) => {
+// global.render = (json) => {
+//   const req = JSON.parse(json);
 //   const component = components(`./${req.name}.jsx`)['default'];
 //   const html = ReactDOMServer.renderToString(React.createElement(component, req.props));
-//   cb(JSON.stringify({html: html}));
-// };
+//   return JSON.stringify({html: html});
+// }
 code, _ := ioutil.ReadFile("bundle.js")
 
 // Create a new reactor.Pool with the given code. A pool is a dynamically growing

@@ -740,13 +740,11 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 var components = __webpack_require__(24);
 
-global.render = function (req, cb) {
+global.render = function (json) {
+  var req = JSON.parse(json);
   var component = components('./' + req.name + '.jsx')['default'];
   var html = _server2.default.renderToString(_react2.default.createElement(component, req.props));
-  var resp = {
-    html: html
-  };
-  cb(JSON.stringify(resp));
+  return JSON.stringify({ html: html });
 };
 /* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(12)))
 

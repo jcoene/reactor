@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 )
 
 var bundle = func() string {
@@ -17,7 +18,53 @@ var bundle = func() string {
 	return string(buf)
 }()
 
+func BenchmarkRender(b *testing.B) {
+	// create a new pool
+	pool, err := NewPool(bundle)
+	if err != nil {
+		b.Fatalf("cannot create pool: %s", err)
+	}
+
+	req := &Request{
+		Name: "Widget",
+	}
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		if _, err := pool.Render(req); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func TestRenderTimeout(t *testing.T) {
+	pool, err := NewPool(bundle)
+	if err != nil {
+		t.Fatalf("cannot create pool: %s", err)
+	}
+
+	req := &Request{
+		Name: "Widget",
+		Props: map[string]interface{}{
+			"serial": "1",
+		},
+		Timeout: 10 * time.Nanosecond,
+	}
+
+	resp, err := pool.Render(req)
+	assertNil(t, resp)
+	assertNotNil(t, err)
+	if err != nil {
+		assertContains(t, err.Error(), "timed out")
+	}
+	time.Sleep(1 * time.Second)
+}
+
 func TestRender(t *testing.T) {
+	threads := 10
+	requests := 1000
+
 	// create a new pool
 	pool, err := NewPool(bundle)
 	if err != nil {
@@ -27,12 +74,11 @@ func TestRender(t *testing.T) {
 	wg := sync.WaitGroup{}
 
 	// render components successfully
-	for i := 0; i < 100; i++ {
+	for i := 0; i < threads; i++ {
 		wg.Add(1)
 
 		go func(i int) {
 			serial := fmt.Sprintf("N-%d-A", i)
-
 			req := &Request{
 				Name: "Widget",
 				Props: map[string]interface{}{
@@ -40,19 +86,22 @@ func TestRender(t *testing.T) {
 					"date":   "2017-10-17",
 				},
 			}
-
-			resp, err := pool.Render(req)
-			assertNil(t, err)
-			assertContains(t, resp.HTML, serial)
-			assertContains(t, resp.HTML, "manufactured at")
-			assertContains(t, resp.HTML, "2017-10-17")
+			for j := 0; j < requests; j++ {
+				resp, err := pool.Render(req)
+				assertNil(t, err)
+				if resp != nil {
+					assertContains(t, resp.HTML, serial)
+					assertContains(t, resp.HTML, "manufactured at")
+					assertContains(t, resp.HTML, "2017-10-17")
+				}
+			}
 
 			wg.Done()
 		}(i)
 	}
 
 	// render components unsuccessfully
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 10; i++ {
 		wg.Add(1)
 
 		go func(i int) {
