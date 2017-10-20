@@ -5,4 +5,4 @@ go:
 
 script:
   - go get -t
-  - go test -cover -race ./...
+  - make test

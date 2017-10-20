@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -32,29 +31,6 @@ func TestPoolRenderInvalidCode(t *testing.T) {
 	assert.NotNil(err)
 	if err != nil {
 		assert.Contains(err.Error(), "Uncaught exception: hi")
-	}
-}
-
-func TestPoolRenderTimeout(t *testing.T) {
-	assert := assert.New(t)
-
-	pool := NewPool(bundle)
-
-	for i := 0; i < 10; i++ {
-		req := &Request{
-			Name: "Widget",
-			Props: map[string]interface{}{
-				"serial": "1",
-			},
-			Timeout: 10 * time.Nanosecond,
-		}
-
-		resp, err := pool.Render(req)
-		assert.Nil(resp)
-		assert.NotNil(err)
-		if err != nil {
-			assert.Contains(err.Error(), "timed out")
-		}
 	}
 }
 
