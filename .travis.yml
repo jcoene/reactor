@@ -4,4 +4,5 @@ go:
   - 1.9.1
 
 script:
-  - go test -cover ./...
+  - go get -t
+  - go test -cover -race ./...

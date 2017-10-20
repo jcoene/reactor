@@ -163,15 +163,9 @@ func (val *Value) Release() {
 	val.ctx.mu.Lock()
 	defer val.ctx.mu.Unlock()
 
-	// do our best to prevent a segfault, but a race can theoretically happen.
-	if val.ctx.ptr == nil {
-		fmt.Println("WARNING: You attempted to release a v8.Value which is associated with a")
-		fmt.Println("         v8.Context that has already been released. This is your bug and")
-		fmt.Println("         may result in a segmentation fault if you're unlucky.")
-		return
+	if val.ctx.ptr != nil {
+		C.V8_Value_Release(val.ctx.ptr, val.ptr)
 	}
-
-	C.V8_Value_Release(val.ctx.ptr, val.ptr)
 	val.ctx = nil
 	val.ptr = nil
 }

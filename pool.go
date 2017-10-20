@@ -16,33 +16,21 @@ type Pool struct {
 // NewPool creates a new Pool of workers with the given server code. It
 // creates a single Worker with the given code. Additional workers will
 // be created on-demand as needed.
-func NewPool(code string) (*Pool, error) {
-	p := &Pool{}
-	if err := p.UpdateCode(code); err != nil {
-		return nil, err
+func NewPool(code string) *Pool {
+	return &Pool{
+		code:    code,
+		version: checksum(code),
 	}
-	return p, nil
 }
 
-// UpdateCode updates the server code for the pool, creating a new Worker
-// with the given code and retiring all workers running old code. Any
-// requests that are currently in-flight will be allowed to finish.
-//
-// In the case where the new code cannot be loaded onto a worker, an error
-// will be returned and the existing code will remain active.
-func (p *Pool) UpdateCode(code string) error {
-	w, err := NewWorker(code)
-	if err != nil {
-		return err
-	}
-
+// UpdateCode updates the server code for the pool, causing any existing
+// workers running an older version of the code to be closed in the future.
+// Any requests that are currently in-flight will be allowed to finish.
+func (p *Pool) UpdateCode(code string) {
 	p.mu.Lock()
 	p.code = code
 	p.version = checksum(code)
-	p.workers = []*Worker{w}
 	p.mu.Unlock()
-
-	return nil
 }
 
 // Render renders a React component with a worker from the pool. If a worker
@@ -74,9 +62,11 @@ func (p *Pool) Get() (*Worker, error) {
 	for len(p.workers) > 0 {
 		w := p.workers[0]
 		p.workers = p.workers[1:]
-		if w.version == p.version && !w.closed {
-			return w, nil
+		if w.closed || w.version != p.version {
+			w.Close()
+			continue
 		}
+		return w, nil
 	}
 
 	return NewWorker(p.code)

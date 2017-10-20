@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/jcoene/reactor/v8"
@@ -21,11 +22,12 @@ type Worker struct {
 	closed  bool
 
 	ctx *v8.Context
+	mu  sync.Mutex
 }
 
 type responseError struct {
-	response *Response
-	err      error
+	resp *Response
+	err  error
 }
 
 // NewWorker returns a new Worker with the given server script loaded
@@ -45,45 +47,19 @@ func NewWorker(code string) (*Worker, error) {
 
 // Render renders a React component using the embedded v8 runtime.
 func (w *Worker) Render(req *Request) (*Response, error) {
-	t := time.Now()
-
-	if w.closed {
-		return nil, ErrClosed
-	}
-
 	if req.Timeout == 0 {
 		req.Timeout = DefaultTimeout
 	}
 
-	buf, err := json.Marshal(req)
-	if err != nil {
-		return nil, err
-	}
-
 	ch := make(chan responseError, 1)
-
 	go func() {
-		val, err := w.ctx.Call("render", string(buf))
-		defer val.Release()
-
-		if err != nil {
-			ch <- responseError{err: err}
-			return
-		}
-
-		resp := &Response{}
-		if err := json.Unmarshal([]byte(val.String()), resp); err != nil {
-			ch <- responseError{err: err}
-			return
-		}
-
-		resp.Timer = time.Since(t)
-		ch <- responseError{response: resp}
+		resp, err := w.render(req)
+		ch <- responseError{resp: resp, err: err}
 	}()
 
 	select {
 	case re := <-ch:
-		return re.response, re.err
+		return re.resp, re.err
 	case <-time.After(req.Timeout):
 		return nil, ErrTimedOut
 	}
@@ -91,11 +67,45 @@ func (w *Worker) Render(req *Request) (*Response, error) {
 
 // Close closes the worker, releasing resources and refusing future requests
 func (w *Worker) Close() {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	w.closed = true
 	if w.ctx != nil {
 		w.ctx.Release()
 		w.ctx = nil
 	}
-	w.closed = true
+}
+
+// render obtains a lock on the worker and renders the given request
+func (w *Worker) render(req *Request) (*Response, error) {
+	t := time.Now()
+
+	buf, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	if w.closed {
+		return nil, ErrClosed
+	}
+	val, err := w.ctx.Call("render", string(buf))
+	if err != nil {
+		return nil, err
+	}
+	buf = []byte(val.String())
+	val.Release()
+
+	resp := &Response{}
+	if err := json.Unmarshal(buf, resp); err != nil {
+		return nil, err
+	}
+	resp.Timer = time.Since(t)
+
+	return resp, nil
 }
 
 // checksum computes the md5 sum of the given code

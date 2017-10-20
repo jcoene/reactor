@@ -9,6 +9,11 @@ import (
 // Timeout field.
 var DefaultTimeout = 5 * time.Second
 
+// Renderer is an interface for a type capable of rendering a Request.
+type Renderer interface {
+	Render(*Request) (*Response, error)
+}
+
 // Request represents a request to be sent to the server.
 type Request struct {
 	// Name is the name of the React component you wish to render. It should

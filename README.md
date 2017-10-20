@@ -27,7 +27,7 @@ code, _ := ioutil.ReadFile("bundle.js")
 // group of workers. It supports hot code reloading and scales based on load.
 //
 // If you only need one worker, you can call reactor.NewWorker.
-pool, _ := reactor.NewPool(string(code))
+pool := reactor.NewPool(string(code))
 
 // Make a reactor.Request. Requests contain a component name and optional properties.
 // The Properties field is an interface{}, so you can supply a map or any custom type
@@ -44,7 +44,7 @@ req := &reactor.Request{
 // Render the Request, resulting in a reactor.Response. Responses have an HTML field
 // with a string representing the full HTML to be rendered. They also have a Timer
 // field indicating how long the render took.
-resp, _ := pool.Render(req)
+resp, err := pool.Render(req)
 
 // Do something with resp.HTML
 ```
