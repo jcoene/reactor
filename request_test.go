@@ -3,6 +3,7 @@
 package reactor
 
 import (
+	"os"
 	"testing"
 	"time"
 
@@ -10,6 +11,10 @@ import (
 )
 
 func TestRequestRenderTimeout(t *testing.T) {
+	if os.Getenv("CI") != "" {
+		t.Skip()
+	}
+
 	assert := assert.New(t)
 
 	pool := NewPool(bundle)
