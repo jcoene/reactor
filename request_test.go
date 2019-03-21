@@ -6,16 +6,12 @@ import (
 	"os"
 	"testing"
 	"time"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestRequestRenderTimeout(t *testing.T) {
 	if os.Getenv("CI") != "" {
 		t.Skip()
 	}
-
-	assert := assert.New(t)
 
 	pool := NewPool(bundle)
 
@@ -29,10 +25,10 @@ func TestRequestRenderTimeout(t *testing.T) {
 		}
 
 		resp, err := pool.Render(req)
-		assert.Nil(resp)
-		assert.NotNil(err)
+		assertNil(t, resp)
+		assertNotNil(t, err)
 		if err != nil {
-			assert.Contains(err.Error(), "timed out")
+			assertContains(t, err.Error(), "timed out")
 		}
 	}
 }

@@ -16,6 +16,13 @@ import (
 	"strings"
 	"sync"
 	"unsafe"
+
+	// These are just required to make sure the files get properly vendored by "go mod"
+	_ "github.com/jcoene/reactor/v8/include"
+	_ "github.com/jcoene/reactor/v8/include/libplatform"
+	_ "github.com/jcoene/reactor/v8/lib"
+	_ "github.com/jcoene/reactor/v8/lib/darwin_x86_64"
+	_ "github.com/jcoene/reactor/v8/lib/linux_x86_64"
 )
 
 var once sync.Once

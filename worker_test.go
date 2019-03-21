@@ -2,27 +2,21 @@ package reactor
 
 import (
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestWorkerEmptyCode(t *testing.T) {
-	assert := assert.New(t)
-
 	w, err := NewWorker("")
-	assert.Nil(err)
-	assert.NotNil(w)
+	assertNil(t, err)
+	assertNotNil(t, w)
 	if w != nil {
-		assert.EqualValues(checksum(""), w.version)
-		assert.False(w.closed)
+		assertEquals(t, checksum(""), w.version)
+		assertEquals(t, false, w.closed)
 	}
 }
 
 func TestWorkerCallCloseSafety(t *testing.T) {
-	assert := assert.New(t)
-
 	w, err := NewWorker(`function render() { return '{"html": "<div>OK</div>"}'; }`)
-	assert.Nil(err)
+	assertNil(t, err)
 
 	for i := 0; i < 300; i++ {
 		if i > 100 && i < 200 {
@@ -30,38 +24,34 @@ func TestWorkerCallCloseSafety(t *testing.T) {
 		}
 		resp, err := w.Render(&Request{})
 		if err == nil {
-			assert.Contains(resp.HTML, "OK")
+			assertContains(t, resp.HTML, "OK")
 		} else {
-			assert.Contains(err.Error(), "worker closed")
+			assertContains(t, err.Error(), "worker closed")
 		}
 	}
 }
 
 func TestWorkerInvalidCode(t *testing.T) {
-	assert := assert.New(t)
-
 	w, err := NewWorker("throw 'hi';")
-	assert.Nil(w)
-	assert.NotNil(err)
+	assertNil(t, w)
+	assertNotNil(t, err)
 	if err != nil {
-		assert.Contains(err.Error(), "Uncaught exception: hi")
+		assertContains(t, err.Error(), "Uncaught exception: hi")
 	}
 }
 
 func TestWorkerRenderClosed(t *testing.T) {
-	assert := assert.New(t)
-
 	w, err := NewWorker("")
-	assert.Nil(err)
-	assert.NotNil(w)
+	assertNil(t, err)
+	assertNotNil(t, w)
 	w.Close()
 
 	resp, err := w.Render(&Request{})
-	assert.Nil(resp)
-	assert.NotNil(err)
+	assertNil(t, resp)
+	assertNotNil(t, err)
 	if err != nil {
-		assert.Contains(err.Error(), "closed")
+		assertContains(t, err.Error(), "closed")
 	}
-	assert.True(w.closed)
-	assert.Nil(w.ctx)
+	assertEquals(t, true, w.closed)
+	assertNil(t, w.ctx)
 }

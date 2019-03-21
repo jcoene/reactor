@@ -1,6 +1,7 @@
 package reactor
 
 import (
+	"fmt"
 	"io/ioutil"
 	"reflect"
 	"strings"
@@ -47,6 +48,14 @@ func assertNotNil(t *testing.T, v interface{}) {
 func assertContains(t *testing.T, s, substr string) {
 	if !strings.Contains(s, substr) {
 		t.Errorf("expected '%s' to contain '%s'", s, substr)
+	}
+}
+
+func assertEquals(t *testing.T, e, g interface{}) {
+	es := fmt.Sprintf("%v", e)
+	gs := fmt.Sprintf("%v", e)
+	if es != gs {
+		t.Errorf("expected '%s', got '%s'", e, gs)
 	}
 }
 

@@ -4,66 +4,56 @@ import (
 	"fmt"
 	"sync"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestPoolRenderEmptyCode(t *testing.T) {
-	assert := assert.New(t)
-
 	p := NewPool("")
 
 	resp, err := p.Render(&Request{})
-	assert.Nil(resp)
-	assert.NotNil(err)
+	assertNil(t, resp)
+	assertNotNil(t, err)
 	if err != nil {
-		assert.Contains(err.Error(), "ReferenceError: render is not defined")
+		assertContains(t, err.Error(), "ReferenceError: render is not defined")
 	}
 }
 
 func TestPoolRenderInvalidCode(t *testing.T) {
-	assert := assert.New(t)
-
 	p := NewPool("throw 'hi';")
 
 	resp, err := p.Render(&Request{})
-	assert.Nil(resp)
-	assert.NotNil(err)
+	assertNil(t, resp)
+	assertNotNil(t, err)
 	if err != nil {
-		assert.Contains(err.Error(), "Uncaught exception: hi")
+		assertContains(t, err.Error(), "Uncaught exception: hi")
 	}
 }
 
 func TestPoolUpdateCode(t *testing.T) {
-	assert := assert.New(t)
-
 	code1 := `function render() { return '{"html": "<div>1</div>"}'; }`
 	code2 := `function render() { return '{"html": "<div>2</div>"}'; }`
 
 	p := NewPool(code1)
 	for i := 0; i < 5; i++ {
 		resp, err := p.Render(&Request{})
-		assert.Nil(err)
-		assert.NotNil(resp)
+		assertNil(t, err)
+		assertNotNil(t, resp)
 		if resp != nil {
-			assert.Contains(resp.HTML, "1")
+			assertContains(t, resp.HTML, "1")
 		}
 	}
 
 	p.UpdateCode(code2)
 	for i := 0; i < 5; i++ {
 		resp, err := p.Render(&Request{})
-		assert.Nil(err)
-		assert.NotNil(resp)
+		assertNil(t, err)
+		assertNotNil(t, resp)
 		if resp != nil {
-			assert.Contains(resp.HTML, "2")
+			assertContains(t, resp.HTML, "2")
 		}
 	}
 }
 
 func TestPoolRenderTorture(t *testing.T) {
-	assert := assert.New(t)
-
 	threads := 20
 	requests := 5000
 
@@ -87,12 +77,12 @@ func TestPoolRenderTorture(t *testing.T) {
 			}
 			for j := 0; j < requests; j++ {
 				resp, err := pool.Render(req)
-				assert.Nil(err)
-				assert.NotNil(resp)
+				assertNil(t, err)
+				assertNotNil(t, resp)
 				if resp != nil {
-					assert.Contains(resp.HTML, serial)
-					assert.Contains(resp.HTML, "manufactured at")
-					assert.Contains(resp.HTML, "2017-10-17")
+					assertContains(t, resp.HTML, serial)
+					assertContains(t, resp.HTML, "manufactured at")
+					assertContains(t, resp.HTML, "2017-10-17")
 				}
 			}
 
@@ -110,11 +100,11 @@ func TestPoolRenderTorture(t *testing.T) {
 			}
 
 			resp, err := pool.Render(req)
-			assert.Nil(resp)
-			assert.NotNil(err)
+			assertNil(t, resp)
+			assertNotNil(t, err)
 			if err != nil {
-				assert.Contains(err.Error(), "Cannot find module './WrongWidget.jsx'")
-				assert.Contains(err.Error(), "at server.js")
+				assertContains(t, err.Error(), "Cannot find module './WrongWidget.jsx'")
+				assertContains(t, err.Error(), "at server.js")
 			}
 
 			wg.Done()
